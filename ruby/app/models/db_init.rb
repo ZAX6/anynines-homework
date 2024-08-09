@@ -22,3 +22,18 @@ Article.create(:title => 'Title YNN', :content => 'O_O_Y_O_O', :created_at => Ti
 
 puts "Article count in DB: #{Article.count}"
 
+ActiveRecord::Base.connection.create_table(:comment, primary_key: 'id', force: true) do |t|
+  t.integer :article_id
+  t.string :content
+  t.timestamp :created_at
+  t.string :author_name
+end
+
+require_relative 'comment'
+
+Comment.create(:article_id => '1', :content => 'Comment Article 1', :created_at => Time.now, :author_name => "Javid Bayati")
+Comment.create(:article_id => '2', :content => 'Comment Article 2', :created_at => Time.now, :author_name => "Javid Bayati")
+Comment.create(:article_id => '2', :content => 'Comment Article 2', :created_at => Time.now, :author_name => "Javid Bayati")
+Comment.create(:article_id => '2', :content => 'Comment Article 3', :created_at => Time.now, :author_name => "Javid Bayati")
+
+puts "Comment count in DB: #{Comment.count}"
