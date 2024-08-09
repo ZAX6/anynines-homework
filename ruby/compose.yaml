@@ -1,0 +1,120 @@
+services:
+  application-test:
+    build:
+      context: .
+      dockerfile: dockerfile
+    labels:
+      namespace: application
+      project: anynines
+    command:
+      - /bin/sh
+      - -c
+      - -euvx
+      - bundle exec rspec spec/
+    entrypoint: []
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  application:
+    build:
+      context: .
+      dockerfile: dockerfile
+    labels:
+      namespace: application
+      project: anynines
+    command:
+      - /bin/sh
+      - -c
+      - -euvx
+      - bundle exec rackup
+    entrypoint: []
+    expose:
+      - 9292
+    ports:
+      - 9292:9292
+    healthcheck:
+      test: ["CMD", "curl", "-u", "applicant:pass", "http://localhost:9292/health", "|", "grep", "-q", "App working OK"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      application-test:
+        condition: service_completed_successfully
+
+  postgres:
+    container_name: anynines-postgres
+    labels:
+      namespace: database
+      project: anynines
+    image: postgres:16
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: blog_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  # https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html
+  pgadmin4:
+    entrypoint: /bin/sh -c "chmod 600 /pgpass; /entrypoint.sh;"
+    container_name: pgadmin4
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "pgadmin4@domain.com"
+      PGADMIN_DEFAULT_PASSWORD: "SuperSecret"
+      # Run PGAdmin in Desktop Mode, no need to log in to access the web interface
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      # Disable master password
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    expose:
+      - 8082
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://pgadmin4/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    image: dpage/pgadmin4:8.10
+    user: root
+    labels:
+      namespace: pgadmin4
+    ports:
+      - 8082:80
+    restart: "no"
+    configs:
+      - source: servers.json
+        target: /pgadmin4/servers.json
+      - source: pgpass
+        target: /pgpass
+        mode: 600
+
+configs:
+  pgpass:
+    content: postgres:5432:postgres:postgres:postgres
+  servers.json:
+    content: |
+      {"Servers": {"1": {
+        "Group": "Servers",
+        "Name": "Anynines Postgres",
+        "Host": "postgres",
+        "Port": 5432,
+        "MaintenanceDB": "postgres",
+        "Username": "postgres",
+        "PassFile": "/pgpass",
+        "SSLMode": "disable"
+      }}}
