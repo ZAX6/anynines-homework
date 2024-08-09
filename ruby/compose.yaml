@@ -67,7 +67,6 @@ services:
 
   # https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html
   pgadmin4:
-    entrypoint: /bin/sh -c "chmod 600 /pgpass; /entrypoint.sh;"
     container_name: pgadmin4
     depends_on:
       postgres:
@@ -97,13 +96,8 @@ services:
     configs:
       - source: servers.json
         target: /pgadmin4/servers.json
-      - source: pgpass
-        target: /pgpass
-        mode: 600
 
 configs:
-  pgpass:
-    content: postgres:5432:postgres:postgres:postgres
   servers.json:
     content: |
       {"Servers": {"1": {
